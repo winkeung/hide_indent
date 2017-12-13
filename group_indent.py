@@ -179,12 +179,11 @@ def findNoIndentCell(start_col, end_col, row):
 #	ByRef blank_row_cnt as long, _ 'ouput, no. of blank rows above row
 #	end_row as long, \
 #	end_col as long
-def group_cell_indent( \
-    col, \
-    row, \
-    row_indent, \
-    blank_row_cnt, \
-    end_col, \
+def group_cell_indent(
+    col,
+    row,
+    row_indent,
+    end_col,
     end_row):
 
     global level
@@ -211,7 +210,7 @@ def group_cell_indent( \
     
     while row_indent < last_row_indent: # next item is deeper indented
         #isBlankLine = False
-        last_row, last_row_indent, blank_row_cnt = group_cell_indent(col, last_row, last_row_indent, blank_row_cnt, end_col, end_row)
+        last_row, last_row_indent, blank_row_cnt = group_cell_indent(col, last_row, last_row_indent, end_col, end_row)
 
 
     # do selection and grouping 
@@ -305,12 +304,11 @@ def group_selection():
         row_indent = findNoIndentCell(col, end_col, row) 
 
         while True:
-            row, row_indent, blank_row_cnt = group_cell_indent( \
-                col, \
-                row, \
-                row_indent, \
-                blank_row_cnt, \
-                end_col, \
+            row, row_indent, blank_row_cnt = group_cell_indent(
+                col,
+                row,
+                row_indent,
+                end_col,
                 end_row)
             if row_indent < 0:
                 break
