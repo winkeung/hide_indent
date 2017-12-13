@@ -11,6 +11,8 @@ Select the range you want to group,
  >1 row, >1 columns  | cell             | selected range 
 </pre>
 and call group_select()
+
 ![Alt text](group_char_indent.png)
+
 ![Alt text](group_cell_indent.png)
 
