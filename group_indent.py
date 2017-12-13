@@ -297,7 +297,7 @@ def group_selection():
                 row,
                 row_indent,
                 end_row)
-            print "here"
+            # print "here"
             if row_indent < 0:
                 break
     else:
