@@ -102,7 +102,7 @@ def group(
             row_indent = -1
             return row, row_indent, blank_row_cnt
 
-        last_row_indent = findNoIndentChar(xSheet.getCellByPosition(col, last_row).string)
+        last_row_indent = findNoIndentChar(xSheet.getCellByPosition(col, last_row).getString())
         if 0 <= last_row_indent :
             break
         
@@ -157,7 +157,7 @@ def group(
 def findNoIndentCell(start_col, end_col, row):
     
     for c in range(start_col, end_col+1):
-        s = xSheet.getCellByPosition(c, row).string
+        s = xSheet.getCellByPosition(c, row).getString()
         if s == "" :
             #print "empty cell"
             pass
@@ -289,7 +289,7 @@ def group_selection():
     blank_row_cnt = 0 #any value will do, this ByRef parameter serve as output only
     
     if addr.StartColumn == addr.EndColumn : #single column is selected, char indentation mode
-        row_indent = findNoIndentChar(xSheet.getCellByPosition(col, row).string) 
+        row_indent = findNoIndentChar(xSheet.getCellByPosition(col, row).getString())
         
         while True:
             row, row_indent, blank_row_cnt = group(
