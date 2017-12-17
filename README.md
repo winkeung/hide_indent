@@ -12,7 +12,7 @@ Select the range you want to group,
 </pre>
 and call group_select()
 
-![Alt text](group_char_indent.png)
+![Alt text](images/group_char_indent.png)
 
-![Alt text](group_cell_indent.png)
+![Alt text](images/group_cell_indent.png)
 
