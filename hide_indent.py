@@ -76,82 +76,6 @@ def get_struct():
     return struct
 
 #
-# A Recursive Function
-#
-# parameters:
-#	col as long, \
-#	ByRef row as long, _           'input & output
-#	ByRef row_indent as long, _    'input & output
-#	ByRef blank_row_cnt as long, _ 'ouput, no. of blank rows above row
-#	end_row as long
-def group(
-    col,
-    row,
-    row_indent,
-    end_row):
-
-    global level
-
-    last_row = row
-    blank_row_cnt = 0
-
-    while True:
-        last_row = last_row + 1
-        if last_row > end_row :
-            row = last_row
-            row_indent = -1
-            return row, row_indent, blank_row_cnt
-
-        last_row_indent = findNoIndentChar(xSheet.getCellByPosition(col, last_row).getString())
-        if 0 <= last_row_indent :
-            break
-        
-        blank_row_cnt = blank_row_cnt + 1
-    
-    level = level + 1 #set before the 1st call to group()
-    
-    while row_indent < last_row_indent: # next item is deeper indented 
-        #isBlankLine = False
-        last_row, last_row_indent, blank_row_cnt = group(col, last_row, last_row_indent, end_row)
-    
-
-    # do selection and grouping 
-    if row + 1 <= last_row - 1 - blank_row_cnt :
-        oRange = xSheet.getCellRangeByPosition(0, row + 1, 0, last_row - 1 - blank_row_cnt)
-        oController.select(oRange)
-
-        #----------------------------------------------------------------------
-        #get access to the document
-        model = desktop.getCurrentComponent()
-        document = model.getCurrentController()
-        dispatcher = smgr.createInstance("com.sun.star.frame.DispatchHelper")
-        
-        #----------------------------------------------------------------------
-        # dim args1(0) as new com.sun.star.beans.PropertyValue
-        # args1(0).Name = "RowOrCol"
-        # args1(0).Value = "R"
-
-        struct = get_struct()
-
-        struct.Name = 'RowOrCol'
-        struct.Value = 'R'
-
-        if level < 8 : #Libre Office Calc only support max 7 levels of nested groups
-            dispatcher.executeDispatch(document, ".uno:Group", "", 0, tuple([struct]))
-        
-        #if level < 3 :
-        #	print level
-        #
-    
-    
-    level = level - 1
-    
-    row = last_row
-    row_indent = last_row_indent
-
-    return row, row_indent, blank_row_cnt
-
-#
 #Find no. of indentation cell in row
 #
 def findNoIndentCell(start_col, end_col, row):
@@ -169,82 +93,85 @@ def findNoIndentCell(start_col, end_col, row):
 
     return  c - start_col
 
-#
-# A Recursive Function, Group Indentation Use Cell as Indent Unit, not char
-#
-# parameters:
-#	col as long, \
-#	ByRef row as long, _           'input & output
-#	ByRef row_indent as long, _    'input & output
-#	ByRef blank_row_cnt as long, _ 'ouput, no. of blank rows above row
-#	end_row as long, \
-#	end_col as long
-def group_cell_indent(
-    col,
-    row,
-    row_indent,
-    end_col,
-    end_row):
 
+def group_recursive(
+        col,
+        row,
+        indent_cell,
+        indent_char,
+        end_col,
+        end_row):
+    """A recursive function, group items below with deeper indentation and stop until a equal or lesser intended row or end row is encountered.
+        parameters:
+            col           -- input col
+            row           -- input row
+            indent_cell
+            indent_char   -- indent level of the input row (indent_cell : indent_char) when indent_cell is the same, compare with indent_char
+            end_col
+            end_row
+
+        return value:
+            row            -- this row is equal or lesser indented then the input row
+            indent_cell
+            indent_char    -- this is the indent level of the above row
+            blank_row_cnt -- no. of blank rows above
+    """
     global level
 
     last_row = row
     blank_row_cnt = 0
 
-    while True:
+    while True: # skip blank rows (and count how many of them) and also check if end_row is reached
         last_row = last_row + 1
-        if last_row > end_row :
+        if last_row > end_row:
             row = last_row
-            row_indent = -1
-            return row, row_indent, blank_row_cnt
-        
+            indent_cell = -1
+            return row, indent_cell, indent_char, blank_row_cnt
 
-        last_row_indent = findNoIndentCell(col, end_col, last_row)
-        if 0 <= last_row_indent :
-            break
-        
+        last_indent_cell = findNoIndentCell(col, end_col, last_row)
+        last_indent_char = 0
+
+        if 0 <= last_indent_cell:
+            last_indent_char = findNoIndentChar(xSheet.getCellByPosition(col + last_indent_cell, last_row).getString())
+            break # not blank row
+
         blank_row_cnt = blank_row_cnt + 1
 
-    
-    level = level + 1 #set before the 1st call to group()
-    
-    while row_indent < last_row_indent: # next item is deeper indented
-        #isBlankLine = False
-        last_row, last_row_indent, blank_row_cnt = group_cell_indent(col, last_row, last_row_indent, end_col, end_row)
+    level = level + 1  # set before the 1st call to group()
 
+    while indent_cell < last_indent_cell or ((indent_cell == last_indent_cell) and (indent_char < last_indent_char)):  # next item is deeper indented
+        # isBlankLine = False
+        last_row, last_indent_cell, last_indent_char, blank_row_cnt = group_recursive(col, last_row, last_indent_cell, last_indent_char, end_col, end_row)
 
-    # do selection and grouping 
-    if row + 1 <= last_row - 1 - blank_row_cnt :
+    # do selection and grouping
+    if row + 1 <= last_row - 1 - blank_row_cnt:
         oRange = xSheet.getCellRangeByPosition(0, row + 1, 0, last_row - 1 - blank_row_cnt)
         oController.select(oRange)
-        
-        #----------------------------------------------------------------------
-        #get access to the document
+
+        # ----------------------------------------------------------------------
+        # get access to the document
         model = desktop.getCurrentComponent()
         document = model.getCurrentController()
         dispatcher = smgr.createInstance("com.sun.star.frame.DispatchHelper")
 
-        #----------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         struct = get_struct()
 
         struct.Name = 'RowOrCol'
         struct.Value = 'R'
-        
-        
-        if level < 8 : #Libre Office Calc only support max 7 levels of nested groups
-            dispatcher.executeDispatch(document, ".uno:Group", "", 0, tuple([struct]))
-        
-        #if level < 3 :
-        #	print level
-        #
-    
-    
-    level = level - 1
-    
-    row = last_row
-    row_indent = last_row_indent
-    return row, row_indent, blank_row_cnt
 
+        if level < 8:  # Libre Office Calc only support max 7 levels of nested groups
+            dispatcher.executeDispatch(document, ".uno:Group", "", 0, tuple([struct]))
+
+            # if level < 3 :
+            #	print level
+            #
+
+    level = level - 1
+
+    # row = last_row
+    # row_indent = last_indent_cell
+    return last_row, last_indent_cell, last_indent_char, blank_row_cnt
 
 # TODO: merge group() and group_cell_indent() into 1 function
 #
@@ -277,41 +204,57 @@ def group_selection():
         c = xSheet.createCursor()
         c.gotoEndOfUsedArea(False)
         
-        end_col = c.RangeAddress.EndColumn	
+        # end_col = c.RangeAddress.EndColumn
         end_row = c.RangeAddress.EndRow
     else:
-        end_col = addr.EndColumn
+        # end_col = addr.EndColumn
         end_row = addr.EndRow
+
+    end_col = c.RangeAddress.EndColumn
 
     global level
     level = 0
 
     blank_row_cnt = 0 #any value will do, this ByRef parameter serve as output only
     
-    if addr.StartColumn == addr.EndColumn : #single column is selected, char indentation mode
-        row_indent = findNoIndentChar(xSheet.getCellByPosition(col, row).getString())
-        
-        while True:
-            row, row_indent, blank_row_cnt = group(
-                col,
-                row,
-                row_indent,
-                end_row)
-            # print "here"
-            if row_indent < 0:
-                break
-    else:
-        row_indent = findNoIndentCell(col, end_col, row) 
+    # if addr.StartColumn == addr.EndColumn : #single column is selected, char indentation mode
+    #     row_indent = findNoIndentChar(xSheet.getCellByPosition(col, row).getString())
+    #
+    #     while True:
+    #         row, row_indent, blank_row_cnt = group(
+    #             col,
+    #             row,
+    #             row_indent,
+    #             end_row)
+    #         # print "here"
+    #         if row_indent < 0:
+    #             break
+    # else:
+    #     row_indent = findNoIndentCell(col, end_col, row)
+    #
+    #     while True:
+    #         row, row_indent, blank_row_cnt = group_cell_indent(
+    #             col,
+    #             row,
+    #             row_indent,
+    #             end_col,
+    #             end_row)
+    #         if row_indent < 0:
+    #             break
 
-        while True:
-            row, row_indent, blank_row_cnt = group_cell_indent(
-                col,
-                row,
-                row_indent,
-                end_col,
-                end_row)
-            if row_indent < 0:
-                break
+    indent_cell = findNoIndentCell(col, end_col, row)
+    indent_char = findNoIndentChar(xSheet.getCellByPosition(col+indent_cell, row).getString())
+
+    while True:
+        row, indent_cell, indent_char, blank_row_cnt = group_recursive(
+            col,
+            row,
+            indent_cell,
+            indent_char,
+            end_col,
+            end_row)
+        if indent_cell < 0:
+            break
 
 if __name__ == "__main__":
     group_selection()
