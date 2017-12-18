@@ -133,7 +133,8 @@ def group_recursive(
 
         if 0 <= last_indent_cell:
             last_indent_char = findNoIndentChar(xSheet.getCellByPosition(col + last_indent_cell, last_row).getString())
-            break # not blank row
+            if 0 <= last_indent_char:
+                break # not blank row
 
         blank_row_cnt = blank_row_cnt + 1
 
@@ -255,6 +256,7 @@ def group_selection():
             end_row)
         if indent_cell < 0:
             break
+        print "here"
 
 if __name__ == "__main__":
     group_selection()
