@@ -216,33 +216,6 @@ def group_selection():
     global level
     level = 0
 
-    # blank_row_cnt = 0 #any value will do, this ByRef parameter serve as output only
-    
-    # if addr.StartColumn == addr.EndColumn : #single column is selected, char indentation mode
-    #     row_indent = findNoIndentChar(xSheet.getCellByPosition(col, row).getString())
-    #
-    #     while True:
-    #         row, row_indent, blank_row_cnt = group(
-    #             col,
-    #             row,
-    #             row_indent,
-    #             end_row)
-    #         # print "here"
-    #         if row_indent < 0:
-    #             break
-    # else:
-    #     row_indent = findNoIndentCell(col, end_col, row)
-    #
-    #     while True:
-    #         row, row_indent, blank_row_cnt = group_cell_indent(
-    #             col,
-    #             row,
-    #             row_indent,
-    #             end_col,
-    #             end_row)
-    #         if row_indent < 0:
-    #             break
-
     indent_cell = findNoIndentCell(col, end_col, row)
     indent_char = findNoIndentChar(xSheet.getCellByPosition(col+indent_cell, row).getString())
 
