@@ -44,6 +44,7 @@ try:
 except:
     unicode = str
 
+doc = None
 xSheet = None
 oController = None
 level = 0
@@ -93,6 +94,62 @@ def findNoIndentCell(start_col, end_col, row):
 
     return  c - start_col
 
+rows = None
+
+def getStringByPosition(c, r):
+    # return xSheet.getCellByPosition(c, r).getString()
+    global rows
+    if rows == None:
+        # doc = desktop.getCurrentComponent()
+        # sheet = doc.CurrentController.getActiveSheet()
+
+        cursor = xSheet.createCursor()
+        cursor.gotoEndOfUsedArea(False)
+
+        end_row = cursor.RangeAddress.EndRow
+        end_col = cursor.RangeAddress.EndColumn
+
+        # get real range to extract data
+        oRange = xSheet.getCellRangeByPosition(0, 0, end_col, end_row)
+
+        # Extract cell contents as DataArray
+        rows = oRange.getDataArray()
+    return str(rows[r][c])
+
+
+def findNoIndent(start_col, end_col, row):
+    """Find no. of indentation cell and char in row.
+    :param start_col:
+    :param end_col:
+    :param row:
+    :return: indent column, indent char
+    """
+    for c in range(start_col, end_col+1):
+        # s = xSheet.getCellByPosition(c, row).getString()
+        s = getStringByPosition(c, row)
+        if s == "" :
+            #print "empty cell"
+            pass
+        else:
+            #print s
+            break
+    else:
+        return -1, -1 #incdicate a blank row
+
+    l = len(s)
+
+    for i in range(l):
+        ch = s[i]
+        if ch == " " or ch == "|" or ch == "+" or ch == "-" or ch == "\\":
+            # print "space"
+            pass
+        else:
+            # print c
+            break
+    else:  # end loop without break
+        return -1, -1  # incdicate a blank line
+
+    return  c - start_col, i
 
 def group_recursive(
         col,
@@ -304,7 +361,8 @@ def hide_selection():
         all already expanded:      collapse all
         none of the above:         expand all
     """
-
+    rows = None
+    global doc
     doc = desktop.getCurrentComponent()
     global oController
     oController = doc.CurrentController
@@ -325,8 +383,9 @@ def hide_selection():
     end_row = c.RangeAddress.EndRow
     end_col = c.RangeAddress.EndColumn
 
-    indent_cell = findNoIndentCell(col, end_col, row)
-    indent_char = findNoIndentChar(xSheet.getCellByPosition(col + indent_cell, row).getString())
+    # indent_cell = findNoIndentCell(col, end_col, row)
+    # indent_char = findNoIndentChar(xSheet.getCellByPosition(col + indent_cell, row).getString())
+    indent_cell, indent_char =findNoIndent(col, end_col, row)
 
     isAlreadyAllExpanded = True
     isAlreadyAllCollapsed = True
@@ -339,33 +398,34 @@ def hide_selection():
         if end_row < last_row:
             break
 
-        last_indent_cell = findNoIndentCell(col, end_col, last_row)
-        last_indent_char = 0
+        # last_indent_cell = findNoIndentCell(col, end_col, last_row)
+        # last_indent_char = 0
 
-        if 0 <= last_indent_cell:
-            last_indent_char = findNoIndentChar(xSheet.getCellByPosition(col + last_indent_cell, last_row).getString())
-            if 0 <= last_indent_char: # not blank row
-                if indent_cell < last_indent_cell or (
-                    (indent_cell == last_indent_cell) and (indent_char < last_indent_char)):  # next item is deeper indented
+        last_indent_cell, last_indent_char = findNoIndent(col, end_col, last_row)
+
+        if (0 <= last_indent_cell) and (0 <= last_indent_char):
+            # last_indent_char = findNoIndentChar(xSheet.getCellByPosition(col + last_indent_cell, last_row).getString())
+            # if 0 <= last_indent_char: # not blank row
+            if indent_cell < last_indent_cell or (
+                (indent_cell == last_indent_cell) and (indent_char < last_indent_char)):  # next item is deeper indented
+                if isAlreadyAllCollapsed or isAlreadyAllExpanded:
                     if check_row_visible(last_row):
                         # print ("here")
                         isAlreadyAllCollapsed = False
                     else:
                         # print ("there")
                         isAlreadyAllExpanded = False
-                    if child_indent_cell < last_indent_cell or (
-                                (child_indent_cell == last_indent_cell) and (
-                                child_indent_char < last_indent_char)):  # next item is deeper indented then lastest encountered immediate child
-                        pass
-                    else: # encounter a new immediate child
-                        child_indent_cell = last_indent_cell
-                        child_indent_char = last_indent_char
-                        set_rows_visible(last_row - blank_row_cnt, blank_row_cnt + 1, True)
-                else:
-                    break # this row is not deeper indented
-                blank_row_cnt = 0
+                if child_indent_cell < last_indent_cell or (
+                            (child_indent_cell == last_indent_cell) and (
+                            child_indent_char < last_indent_char)):  # next item is deeper indented then lastest encountered immediate child
+                    pass
+                else: # encounter a new immediate child
+                    child_indent_cell = last_indent_cell
+                    child_indent_char = last_indent_char
+                    set_rows_visible(last_row - blank_row_cnt, blank_row_cnt + 1, True)
             else:
-                blank_row_cnt += 1 # blank row
+                break # this row is not deeper indented
+            blank_row_cnt = 0
         else:
             blank_row_cnt += 1 # blank row
 
