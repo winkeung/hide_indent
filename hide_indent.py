@@ -316,41 +316,98 @@ def set_selection_visible(isVisible):
 
     dispatcher.executeDispatch(document, cmd_str, "", 0, tuple([struct]))
 
+def arrow_down():
+    model = desktop.getCurrentComponent()
+    document = model.getCurrentController()
+    dispatcher = smgr.createInstance( "com.sun.star.frame.DispatchHelper")
+
+    cmd_str = ".uno:GoDown"
+
+    structs = (get_struct(), get_struct())
+
+    structs[0].Name = 'By'
+    structs[0].Value = '1'
+    structs[1].Name = 'Sel'
+    structs[1].Value = 'false'
+
+    dispatcher.executeDispatch(document, cmd_str, "", 0, structs)
+
 def set_rows_visible(start_row, no_of_row, isVisible):
     doc = desktop.getCurrentComponent()
-    sheet = doc.CurrentController.getActiveSheet()
+    # sheet = doc.CurrentController.getActiveSheet()
 
     # Col = sheet.Columns[1]
-    Rows = sheet.Rows
-    for r in range(start_row, start_row + no_of_row):
-        try:
-            Rows[r].IsVisible = isVisible
-            # print("IsVisible")
-        except:
-            # backup current selection
-            oSelection = doc.getCurrentSelection()
-            oArea = oSelection.getRangeAddress()
-            frow = oArea.StartRow
-            lrow = oArea.EndRow
-            fcol = oArea.StartColumn
-            lcol = oArea.EndColumn
+    # Rows = sheet.Rows
+    # for r in range(start_row, start_row + no_of_row):
+    #     try:
+    #         Rows[r].IsVisible = isVisible
+    #         # print("IsVisible")
+    #     except:
 
-            select(fcol, start_row, fcol, start_row + no_of_row - 1)
-            set_selection_visible(isVisible)
-            # print("set_selection_visiable")
+    # backup current selection
+    oSelection = doc.getCurrentSelection()
+    oArea = oSelection.getRangeAddress()
+    frow = oArea.StartRow
+    lrow = oArea.EndRow
+    fcol = oArea.StartColumn
+    lcol = oArea.EndColumn
 
-            # restore previous selection
-            select(fcol, frow, lcol, lrow)
-            break
+    select(fcol, start_row, fcol, start_row + no_of_row - 1)
+    set_selection_visible(isVisible)
+    # print("set_selection_visiable")
 
-def check_row_visible(r):
+    # restore previous selection
+    select(fcol, frow, lcol, lrow)
+    # break
+
+def next_visible_row(r):
+    # doc = desktop.getCurrentComponent()
+    # sheet = doc.CurrentController.getActiveSheet()
+    #
+    # # Col = sheet.Columns[1]
+    # Row = sheet.Rows[r]
+    # # sheet.Rows.hideByIndex(i,1)
+    # return Row.IsVisible
+
+    model = desktop.getCurrentComponent()
+    document = model.getCurrentController()
+
+    # backup current selection
     doc = desktop.getCurrentComponent()
-    sheet = doc.CurrentController.getActiveSheet()
+    oSelection = doc.getCurrentSelection()
+    oArea = oSelection.getRangeAddress()
+    frow = oArea.StartRow
+    lrow = oArea.EndRow
+    fcol = oArea.StartColumn
+    lcol = oArea.EndColumn
 
-    # Col = sheet.Columns[1]
-    Row = sheet.Rows[r]
-    # sheet.Rows.hideByIndex(i,1)
-    return Row.IsVisible
+    # select previous/next row and then send a arrow key down/up event
+    if r > 0:
+        select(fcol, r - 1, fcol, r - 1)
+        cmd_str = ".uno:GoDown"
+    else:
+        select(fcol, r + 1, fcol, r + 1)
+        cmd_str = ".uno:GoUp"
+
+    dispatcher = smgr.createInstance( "com.sun.star.frame.DispatchHelper")
+
+    structs = (get_struct(), get_struct())
+
+    structs[0].Name = 'By'
+    structs[0].Value = '1'
+    structs[1].Name = 'Sel'
+    structs[1].Value = 'false'
+
+    dispatcher.executeDispatch(document, cmd_str, "", 0, structs)
+
+    # get current selection
+    oSelection = doc.getCurrentSelection()
+    oArea = oSelection.getRangeAddress()
+
+    # restore previous selection
+    select(fcol, frow, lcol, lrow)
+
+    return oArea.StartRow
 
 def hide_selection():
     """Cycle between collapse all, expand one level, and expand all (treat indentation as indicator of tree relationship).
@@ -358,9 +415,12 @@ def hide_selection():
         all expanded or all collapsed. And then do the following actions:
 
         all already collapsed:     expand 1 level (already done)
-        all already expanded:      collapse all
+        all already expanded:      collapse all (checking of this condition takes a lot of time)
+        if grand child exist, at least one grand child expanded    collpase all
+        if grand child not exist, at least one child expanded      collapse all
         none of the above:         expand all
     """
+    global rows
     rows = None
     global doc
     doc = desktop.getCurrentComponent()
@@ -385,7 +445,8 @@ def hide_selection():
 
     # indent_cell = findNoIndentCell(col, end_col, row)
     # indent_char = findNoIndentChar(xSheet.getCellByPosition(col + indent_cell, row).getString())
-    indent_cell, indent_char =findNoIndent(col, end_col, row)
+    indent_cell, indent_char = findNoIndent(col, end_col, row)
+    next_visible_r = next_visible_row(row)
 
     isAlreadyAllExpanded = True
     isAlreadyAllCollapsed = True
@@ -409,12 +470,19 @@ def hide_selection():
             if indent_cell < last_indent_cell or (
                 (indent_cell == last_indent_cell) and (indent_char < last_indent_char)):  # next item is deeper indented
                 if isAlreadyAllCollapsed or isAlreadyAllExpanded:
-                    if check_row_visible(last_row):
-                        # print ("here")
-                        isAlreadyAllCollapsed = False
-                    else:
-                        # print ("there")
-                        isAlreadyAllExpanded = False
+                    while True:
+                        if last_row < next_visible_r:
+                            print ("exp")
+                            isAlreadyAllExpanded = False
+                            break
+                        elif last_row == next_visible_r:
+                            print ("col")
+                            isAlreadyAllCollapsed = False
+                            break
+                        else:
+                            print("next visible")
+                            next_visible_r = next_visible_row(last_row)
+
                 if child_indent_cell < last_indent_cell or (
                             (child_indent_cell == last_indent_cell) and (
                             child_indent_char < last_indent_char)):  # next item is deeper indented then lastest encountered immediate child
@@ -428,7 +496,7 @@ def hide_selection():
             blank_row_cnt = 0
         else:
             blank_row_cnt += 1 # blank row
-
+    print("here")
     if isAlreadyAllExpanded:
         # collapse all
         set_rows_visible(row + 1, last_row - row - 1 - blank_row_cnt, False)
