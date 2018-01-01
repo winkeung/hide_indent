@@ -437,6 +437,12 @@ def hide_selection():
     col = addr.StartColumn
     row = addr.StartRow
 
+    # backup up current selection
+    frow = addr.StartRow
+    lrow = addr.EndRow
+    fcol = addr.StartColumn
+    lcol = addr.EndColumn
+
     c = xSheet.createCursor()
     c.gotoEndOfUsedArea(False)
 
@@ -515,6 +521,9 @@ def hide_selection():
         else:
             # expand all
             set_rows_visible(row + 1, last_row - row - 1 - blank_row_cnt, True)
+
+    # restore previous selection
+    select(fcol, frow, lcol, lrow)
 
 if __name__ == "__main__":
     group_selection()
