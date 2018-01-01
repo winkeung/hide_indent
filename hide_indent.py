@@ -509,15 +509,12 @@ def hide_selection():
             blank_row_cnt += 1 # blank row
     print("here")
     if isUnHideRowFound:
-        if isUnHideGrandChildFound:
+        if isUnHideGrandChildFound or (not isGrandChildFound):
             # collapse all
             set_rows_visible(row + 1, last_row - row - 1 - blank_row_cnt, False)
-        elif isGrandChildFound:
+        else:
             # expand all
             set_rows_visible(row + 1, last_row - row - 1 - blank_row_cnt, True)
-        else:
-            # collapse all
-            set_rows_visible(row + 1, last_row - row - 1 - blank_row_cnt, False)
 
 if __name__ == "__main__":
     group_selection()
