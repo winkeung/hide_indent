@@ -357,7 +357,7 @@ def set_rows_visible(start_row, no_of_row, isVisible):
     # print("set_selection_visiable")
 
     # restore previous selection
-    select(fcol, frow, lcol, lrow)
+    # select(fcol, frow, lcol, lrow)
     # break
 
 def next_visible_row(r):
@@ -417,7 +417,7 @@ def hide_selection():
         all already collapsed:     expand 1 level (already done)
         all already expanded:      collapse all (checking of this condition takes a lot of time)
         if grand child exist, at least one grand child expanded    collpase all
-        if grand child not exist, at least one child expanded      collapse all
+        else if grand child not exist, at least one child expanded      collapse all
         none of the above:         expand all
     """
     global rows
@@ -448,8 +448,9 @@ def hide_selection():
     indent_cell, indent_char = findNoIndent(col, end_col, row)
     next_visible_r = next_visible_row(row)
 
-    isAlreadyAllExpanded = True
-    isAlreadyAllCollapsed = True
+    isUnHideRowFound = False
+    isUnHideGrandChildFound = False
+    isGrandChildFound = False
     last_row = row
     child_indent_cell = 1025 # lastest encountered immediate child's indentation, init to a impossible big number
     child_indent_char = 0
@@ -464,29 +465,39 @@ def hide_selection():
 
         last_indent_cell, last_indent_char = findNoIndent(col, end_col, last_row)
 
-        if (0 <= last_indent_cell) and (0 <= last_indent_char):
-            # last_indent_char = findNoIndentChar(xSheet.getCellByPosition(col + last_indent_cell, last_row).getString())
-            # if 0 <= last_indent_char: # not blank row
+        if (0 <= last_indent_cell) and (0 <= last_indent_char): # not blank row
             if indent_cell < last_indent_cell or (
                 (indent_cell == last_indent_cell) and (indent_char < last_indent_char)):  # next item is deeper indented
-                if isAlreadyAllCollapsed or isAlreadyAllExpanded:
+                if not isUnHideRowFound:
                     while True:
                         if last_row < next_visible_r:
-                            print ("exp")
-                            isAlreadyAllExpanded = False
+                            # print ("exp")
                             break
                         elif last_row == next_visible_r:
-                            print ("col")
-                            isAlreadyAllCollapsed = False
+                            # print ("col")
+                            isUnHideRowFound = True
                             break
                         else:
-                            print("next visible")
+                            # print("next visible")
                             next_visible_r = next_visible_row(last_row)
 
                 if child_indent_cell < last_indent_cell or (
                             (child_indent_cell == last_indent_cell) and (
                             child_indent_char < last_indent_char)):  # next item is deeper indented then lastest encountered immediate child
-                    pass
+                    isGrandChildFound = True
+                    if not isUnHideGrandChildFound:
+                        while True:
+                            if last_row < next_visible_r:
+                                # print ("exp")
+                                break
+                            elif last_row == next_visible_r:
+                                # print ("col")
+                                isUnHideGrandChildFound = True
+                                break
+                            else:
+                                # print("next visible")
+                                next_visible_r = next_visible_row(last_row)
+
                 else: # encounter a new immediate child
                     child_indent_cell = last_indent_cell
                     child_indent_char = last_indent_char
@@ -497,12 +508,16 @@ def hide_selection():
         else:
             blank_row_cnt += 1 # blank row
     print("here")
-    if isAlreadyAllExpanded:
-        # collapse all
-        set_rows_visible(row + 1, last_row - row - 1 - blank_row_cnt, False)
-    elif not isAlreadyAllCollapsed:
-        # expand all
-        set_rows_visible(row + 1, last_row - row - 1 - blank_row_cnt, True)
+    if isUnHideRowFound:
+        if isUnHideGrandChildFound:
+            # collapse all
+            set_rows_visible(row + 1, last_row - row - 1 - blank_row_cnt, False)
+        elif isGrandChildFound:
+            # expand all
+            set_rows_visible(row + 1, last_row - row - 1 - blank_row_cnt, True)
+        else:
+            # collapse all
+            set_rows_visible(row + 1, last_row - row - 1 - blank_row_cnt, False)
 
 if __name__ == "__main__":
     group_selection()
