@@ -44,6 +44,7 @@ try:
 except:
     unicode = str
 
+
 doc = None
 xSheet = None
 oController = None
@@ -54,7 +55,7 @@ level = 0
 # '
 def findNoIndentChar(ln):
     l = len(ln)
-    
+
     for i in range(l):
         c = ln[i]
         if c == " " or c == "|" or c == "+" or c == "-" or c == "\\":
@@ -80,7 +81,7 @@ def get_struct():
 #Find no. of indentation cell in row
 #
 def findNoIndentCell(start_col, end_col, row):
-    
+
     for c in range(start_col, end_col+1):
         s = xSheet.getCellByPosition(c, row).getString()
         if s == "" :
@@ -114,7 +115,7 @@ def getStringByPosition(c, r):
 
         # Extract cell contents as DataArray
         rows = oRange.getDataArray()
-    return str(rows[r][c])
+    return unicode(rows[r][c])
 
 
 def findNoIndent(start_col, end_col, row):
@@ -249,19 +250,19 @@ def group_selection():
     oController = doc.CurrentController
     global xSheet
     xSheet = doc.CurrentController.getActiveSheet()
-    
+
     oSel = doc.getCurrentSelection() #or oView.getSelection()
     addr = oSel.getRangeAddress()
-    
+
     #print addr.StartRow, addr.EndRow, addr.StartColumn, addr.EndColumn
     # dim col as long, row as long, row_indent as long, end_col as long, end_row as long
     col = addr.StartColumn
     row = addr.StartRow
-    
+
     if addr.EndRow == addr.StartRow :
         c = xSheet.createCursor()
         c.gotoEndOfUsedArea(False)
-        
+
         # end_col = c.RangeAddress.EndColumn
         end_row = c.RangeAddress.EndRow
     else:
@@ -411,8 +412,8 @@ def next_visible_row(r):
 
 def hide_selection():
     """Cycle between collapse all, expand one level, and expand all (treat indentation as indicator of tree relationship).
-        Walk thru all rows and expand all immediate children if not yet expanded and check whether it is originally
-        all expanded or all collapsed. And then do the following actions:
+        Walk thru all rows and expand all immediate children(not grand/grandgrand.. child) if not yet expanded and check
+        whether it is originally all expanded or all collapsed. And then do the following actions:
 
         all already collapsed:     expand 1 level (already done)
         all already expanded:      collapse all (checking of this condition takes a lot of time)
@@ -436,6 +437,7 @@ def hide_selection():
     # dim col as long, row as long, row_indent as long, end_col as long, end_row as long
     col = addr.StartColumn
     row = addr.StartRow
+    #print row
 
     # backup up current selection
     frow = addr.StartRow
@@ -513,7 +515,7 @@ def hide_selection():
             blank_row_cnt = 0
         else:
             blank_row_cnt += 1 # blank row
-    print("here")
+    #print("here")
     if isUnHideRowFound:
         if isUnHideGrandChildFound or (not isGrandChildFound):
             # collapse all
@@ -521,6 +523,80 @@ def hide_selection():
         else:
             # expand all
             set_rows_visible(row + 1, last_row - row - 1 - blank_row_cnt, True)
+
+    # restore previous selection
+    select(fcol, frow, lcol, lrow)
+
+def hide_all_elder_brothers():
+    """Thide all elder brothers (treat indentation as indicator of tree relationship).
+        Walk thru all rows and expand all immediate children(not grand/grandgrand.. child) if not yet expanded and check
+        whether it is originally all expanded or all collapsed. And then do the following actions:
+
+        all already collapsed:     expand 1 level (already done)
+        all already expanded:      collapse all (checking of this condition takes a lot of time)
+
+    if not all collapsed
+        if grand child exist, at least one grand child expanded    collpase all
+        else if grand child not exist, at least one child expanded      collapse all
+        else:         expand all
+    """
+    global rows
+    rows = None
+    global doc
+    doc = desktop.getCurrentComponent()
+    global oController
+    oController = doc.CurrentController
+    global xSheet
+    xSheet = doc.CurrentController.getActiveSheet()
+
+    oSel = doc.getCurrentSelection()  # or oView.getSelection()
+    addr = oSel.getRangeAddress()
+
+    # print addr.StartRow, addr.EndRow, addr.StartColumn, addr.EndColumn
+    # dim col as long, row as long, row_indent as long, end_col as long, end_row as long
+    col = addr.StartColumn
+    row = addr.StartRow
+
+    # backup up current selection
+    frow = addr.StartRow
+    lrow = addr.EndRow
+    fcol = addr.StartColumn
+    lcol = addr.EndColumn
+
+    c = xSheet.createCursor()
+    c.gotoEndOfUsedArea(False)
+
+    end_row = c.RangeAddress.EndRow
+    end_col = c.RangeAddress.EndColumn
+
+    # indent_cell = findNoIndentCell(col, end_col, row)
+    # indent_char = findNoIndentChar(xSheet.getCellByPosition(col + indent_cell, row).getString())
+    indent_cell, indent_char = findNoIndent(col, end_col, row)
+    next_visible_r = next_visible_row(row)
+
+    isUnHideRowFound = False
+    isUnHideGrandChildFound = False
+    isGrandChildFound = False
+    last_row = row
+    child_indent_cell = 1025 # latest encountered immediate child's indentation, init to a impossible big number
+    child_indent_char = 0
+    blank_row_cnt = 0 # no. blank row above the current visiting row
+    while True:
+        last_row -= 1
+        if last_row < 0:
+            break
+
+        last_indent_cell, last_indent_char = findNoIndent(col, end_col, last_row)
+
+        if (0 <= last_indent_cell) and (0 <= last_indent_char): # not blank row
+            if last_indent_cell < indent_cell or (
+                (indent_cell == last_indent_cell) and (last_indent_char < indent_char)):  # is shallower indented
+                break
+
+    if row - last_row - 1 > 0:
+        set_rows_visible(last_row + 1, row - last_row - 1, False)
+    if 0 <= last_row:
+        set_rows_visible(last_row, 1, True)
 
     # restore previous selection
     select(fcol, frow, lcol, lrow)
