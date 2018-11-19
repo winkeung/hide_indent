@@ -7,7 +7,7 @@ Inspired by emacs org-mode's outline folding and unfolding. Similar to my other 
 Select the cell on the row you want to expand/collapse (the column of the cell has to be located on the same column as the root node) and then call the hide_selection() function.
 
 ## Screenshots
-1. Select the row for it sub branch to collapse and then call hide_selection(). 
+1. Select the row you want to collapse its sub nodes and then call hide_selection(). 
 ![Alt text](images/expand_all.png)
 
 2. All sub nodes are collpased now. Call hide_selection() one more time.
